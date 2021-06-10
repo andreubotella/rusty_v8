@@ -161,6 +161,12 @@ fn test_string() {
       local.write_utf8(scope, &mut vec, Some(&mut nchars), options)
     );
     assert_eq!(15, nchars);
+    let mut u16_buffer = [0u16; 16];
+    assert_eq!(15, local.write(scope, &mut u16_buffer, 0, options));
+    assert_eq!(
+      String::from(reference),
+      String::from_utf16(&u16_buffer[..15]).unwrap()
+    );
   }
   {
     let scope = &mut v8::HandleScope::new(isolate);
@@ -185,6 +191,18 @@ fn test_string() {
     assert_eq!(3, local.length());
     assert_eq!(3, local.utf8_length(scope));
     assert_eq!("foo", local.to_rust_string_lossy(scope));
+  }
+  {
+    let scope = &mut v8::HandleScope::new(isolate);
+    let local = v8::String::new_from_two_byte(
+      scope,
+      &[0xD83E, 0xDD95],
+      v8::NewStringType::Normal,
+    )
+    .unwrap();
+    assert_eq!(2, local.length());
+    assert_eq!(4, local.utf8_length(scope));
+    assert_eq!("🦕", local.to_rust_string_lossy(scope));
   }
 }
 
@@ -5147,6 +5165,7 @@ fn external_strings() {
   // Externality checks
   assert!(json_external.is_external());
   assert!(json_external.is_external_onebyte());
+  assert!(!json_external.is_external_twobyte());
   assert!(json_external.is_onebyte());
 
   // In & out
@@ -5157,11 +5176,28 @@ fn external_strings() {
   // Externality checks
   assert!(hello.is_external());
   assert!(hello.is_external_onebyte());
+  assert!(!hello.is_external_twobyte());
   assert!(hello.is_onebyte());
+
+  // Two-byte static
+  let two_byte = v8::String::new_external_twobyte_static(
+    scope,
+    &[0xDD95, 0x0020, 0xD83E, 0xDD95],
+  )
+  .unwrap();
+  let rust_str = two_byte.to_rust_string_lossy(scope);
+  assert_eq!(rust_str, "\u{FFFD} 🦕");
+  assert!(two_byte.length() == 4);
+  // Externality checks
+  assert!(two_byte.is_external());
+  assert!(!two_byte.is_external_onebyte());
+  assert!(two_byte.is_external_twobyte());
+  assert!(!two_byte.is_onebyte());
 
   // two-byte "internal" test
   let gradients = v8::String::new(scope, "∇gradients").unwrap();
   assert!(!gradients.is_external());
   assert!(!gradients.is_external_onebyte());
+  assert!(!gradients.is_external_twobyte());
   assert!(!gradients.is_onebyte());
 }

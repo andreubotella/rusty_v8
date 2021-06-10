@@ -852,10 +852,24 @@ const v8::String* v8__String__NewFromOneByte(v8::Isolate* isolate,
       v8::String::NewFromOneByte(isolate, data, new_type, length));
 }
 
+const v8::String* v8__String__NewFromTwoByte(v8::Isolate* isolate,
+                                             const uint16_t* data,
+                                             v8::NewStringType new_type,
+                                             int length) {
+  return maybe_local_to_ptr(
+      v8::String::NewFromTwoByte(isolate, data, new_type, length));
+}
+
 int v8__String__Length(const v8::String& self) { return self.Length(); }
 
 int v8__String__Utf8Length(const v8::String& self, v8::Isolate* isolate) {
   return self.Utf8Length(isolate);
+}
+
+int v8__String__Write(const v8::String& self, v8::Isolate* isolate,
+                          uint16_t* buffer, int start, int length,
+                          int options) {
+  return self.Write(isolate, buffer, start, length, options);
 }
 
 int v8__String__WriteUtf8(const v8::String& self, v8::Isolate* isolate,
@@ -882,6 +896,26 @@ const v8::String* v8__String__NewExternalOneByteStatic(v8::Isolate* isolate,
                                                        int length) {
   return maybe_local_to_ptr(v8::String::NewExternalOneByte(
       isolate, new ExternalStaticOneByteStringResource(data, length)));
+}
+
+class ExternalStaticStringResource
+    : public v8::String::ExternalStringResource {
+ public:
+  ExternalStaticStringResource(const uint16_t* data, int length)
+      : _data(data), _length(length) {}
+  const uint16_t* data() const override { return _data; }
+  size_t length() const override { return _length; }
+
+ private:
+  const uint16_t* _data;
+  const int _length;
+};
+
+const v8::String* v8__String__NewExternalTwoByteStatic(v8::Isolate* isolate,
+                                                       const uint16_t* data,
+                                                       int length) {
+  return maybe_local_to_ptr(v8::String::NewExternalTwoByte(
+      isolate, new ExternalStaticStringResource(data, length)));
 }
 
 bool v8__String__IsExternal(const v8::String& self) {
